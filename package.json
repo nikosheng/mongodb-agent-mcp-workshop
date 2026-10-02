@@ -1,0 +1,25 @@
+{
+  "name": "mongodb-mcp-vector-search-workshop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Workshop demo: MongoDB MCP Server + Atlas Vector Search, powered by a Mastra agent.",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mastra/core": "latest",
+    "@mastra/loggers": "latest",
+    "@mastra/mcp": "latest",
+    "mastra": "latest",
+    "mongodb": "^6.10.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
