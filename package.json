@@ -7,7 +7,13 @@
   "scripts": {
     "dev": "mastra dev",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "admin:provision": "tsx admin/provision-workshop.ts",
+    "admin:extend": "tsx admin/update-settings.ts --action extend",
+    "admin:disable": "tsx admin/update-settings.ts --action disable",
+    "admin:enable": "tsx admin/update-settings.ts --action enable",
+    "admin:rotate-key": "tsx admin/update-settings.ts --action rotate-key",
+    "admin:status": "tsx admin/update-settings.ts --action status"
   },
   "dependencies": {
     "@mastra/core": "latest",

@@ -5,6 +5,20 @@ by typing natural-language prompts into the chat window (Mastra Studio, opened
 via `npm run dev`) — there is no custom UI code to demo, the conversation
 *is* the demo.
 
+## Before you start (presenter, once)
+
+1. Run `npm run admin:provision -- --demo-password ... --readonly-password ... --admin-password ... --hours 24`
+   (see README for the full prerequisites). This seeds the shared catalog and
+   builds the `plot_vector_index` Automated Embedding index.
+2. Wait for the index's initial sync to finish — check with:
+   `npm run admin:status` (shows the time window) and, in Atlas's Data
+   Explorer → Search & Vector Search tab, confirm `plot_vector_index` status
+   is `READY` (not `Pending`/`Building`). With 28 seed documents this usually
+   takes under a minute.
+3. Distribute `MONGODB_DEMO_CONNECTION_STRING` and
+   `MONGODB_ADMIN_READONLY_CONNECTION_STRING` to attendees (handout, private
+   chat — not git).
+
 ## Attendee setup (each person, ~2 minutes)
 
 ```bash
@@ -79,3 +93,13 @@ what fields exist?"
   disabled entirely for this workshop (see `src/mastra/mcp/mongodb-client.ts`).
 - Don't ask it to connect to or inspect any other database — its credentials
   only grant access to `streaming_catalog`.
+
+## After the workshop (presenter)
+
+```bash
+npm run admin:disable
+```
+
+Instantly stops every attendee's agent from calling the LLM, regardless of
+the configured time window. Or just let `expiresAt` pass naturally — same
+effect, no action needed.
