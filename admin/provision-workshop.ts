@@ -84,8 +84,18 @@ function requireEnv(name: string): string {
 }
 
 function atlas(args: string[]): string {
-  console.log(`$ atlas ${args.join(' ')}`)
-  return execFileSync('atlas', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
+  const displayArgs = args.map((value, index) => args[index - 1] === '--password' ? '[REDACTED]' : value)
+  console.log(`$ atlas ${displayArgs.join(' ')}`)
+  try {
+    return execFileSync('atlas', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  } catch (err) {
+    const cliError = err as Error & { stderr?: string }
+    let detail = cliError.stderr || cliError.message
+    const passwordIndex = args.indexOf('--password')
+    const password = passwordIndex === -1 ? undefined : args[passwordIndex + 1]
+    if (password) detail = detail.replaceAll(password, '[REDACTED]')
+    throw new Error(`Atlas command failed: atlas ${displayArgs.join(' ')}\n${detail}`)
+  }
 }
 
 /** Creates an Atlas database user, tolerating "already exists" errors so the script stays idempotent. */
@@ -100,7 +110,6 @@ function ensureDbUser(opts: {
     atlas([
       'dbusers',
       'create',
-      opts.roleName,
       '--username',
       opts.username,
       '--password',
