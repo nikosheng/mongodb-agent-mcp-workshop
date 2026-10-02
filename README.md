@@ -28,21 +28,51 @@ Vector search needs **no API key at all**: `plot_vector_index` is an Atlas
 Atlas generates and manages embeddings entirely server-side, for both the
 seed catalog and anything attendees insert live.
 
-## Attendee setup (each person)
+## Workshop guidance for attendees
+
+### 1. Setup (~2 minutes)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/nikosheng/mongodb-agent-mcp-workshop.git
 cd mongodb-agent-mcp-workshop
 cp .env.example .env
-# edit .env: set WORKSHOP_USER_ID, paste the two shared connection strings
-# from the admin's handout. No API keys needed.
+# edit .env: set WORKSHOP_USER_ID (your name/initials), and paste the two
+# shared connection strings your workshop admin gives you. No API keys needed.
 npm install
 npm run dev
 ```
 
-`npm run dev` opens Mastra Studio — a chat UI with live tool-call tracing.
-See [`demo/workshop_script.md`](./demo/workshop_script.md) for the live demo
-flow and example prompts.
+`npm run dev` opens **Mastra Studio** in your browser — a chat UI with live
+tool-call tracing. That chat window is the whole demo surface; there's no
+separate app to run.
+
+### 2. Try it out
+
+See [`demo/workshop_script.md`](./demo/workshop_script.md) for the full live
+demo flow and example prompts. In short, you can:
+
+- **Ask for a recommendation** — e.g. "Recommend something like Stranger
+  Things but funnier." Watch the tool-call trace: the agent runs a
+  `$vectorSearch` aggregation against `plot_vector_index`, and Atlas embeds
+  your request automatically (no vectors computed in this app).
+- **Contribute your own title** — e.g. "Add a movie idea: ..." The agent
+  inserts it into the shared catalog tagged with your `WORKSHOP_USER_ID`;
+  Atlas embeds it within a few seconds, live.
+- **Search again** to confirm your new title shows up in semantic search.
+- **Combine filters with semantic search** — e.g. "a sci-fi title similar to
+  X, but only from 2022 or later."
+
+Don't ask the agent to drop the index/collection or connect to any other
+database — destructive tools are disabled server-side and your credentials
+only grant access to `streaming_catalog`, so neither would work anyway.
+
+### 3. Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| Agent refuses every message with a "workshop not active" style error | The admin hasn't started the window yet, it expired, or it was disabled — contact your organizer, nothing to fix on your end |
+| "MONGODB_ADMIN_READONLY_CONNECTION_STRING is missing" | You haven't filled in `.env` yet, or forgot to restart `npm run dev` after editing it |
+| MCP tool calls fail with an auth/permission error | Double-check you pasted the exact connection strings from your admin's handout (not your own Atlas credentials) |
 
 ## Project layout
 
