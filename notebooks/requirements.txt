@@ -1,0 +1,4 @@
+pymongo>=4.9
+voyageai>=0.3
+python-dotenv>=1.0
+jupyterlab>=4.2

@@ -1,36 +1,40 @@
 # MongoDB MCP Server + Atlas Vector Search Workshop
 
-A minimal, multi-user workshop demo showing the MongoDB MCP Server and Atlas
-Vector Search (Automated Embedding, `voyage-4`) through a single Mastra agent.
-5–10 attendees clone this repo and share one pre-provisioned Atlas cluster —
-nobody needs their own Atlas account, API keys, or cluster.
+A hands-on workshop on MongoDB Atlas Vector Search: attendees first **build a
+vector search pipeline by hand** (schema → embed with Voyage AI → create a
+vector index → query it) in a Jupyter notebook, then see the same capability
+**fully automated** (Atlas Automated Embedding, `voyage-4`) through a single
+Mastra agent + the MongoDB MCP Server. 5–10 attendees clone this repo and
+share one pre-provisioned Atlas cluster — nobody needs their own Atlas
+account, Voyage account, or cluster.
 
 ```
 Attendee's laptop (× 5-10, same repo, same shared cluster)
-  Mastra agent (Mastra Studio chat UI, `npm run dev`)
+  Part 1: Jupyter notebook (pymongo + voyageai, manual pipeline)
+  Part 2: Mastra agent (Mastra Studio chat UI, `npm run dev`)
     ├─ model: Grove AI Gateway → gpt-6-luna (key fetched from Atlas, not .env)
     └─ tools: MongoDB MCP Server (stdio subprocess, workshop_demo_user)
                     │
                     ▼
       Atlas cluster (admin's existing Flex cluster)
-        ├─ streaming_catalog.titles        (shared catalog + autoEmbed index)
-        └─ workshop_admin.settings         (admin-only control-plane doc)
+        ├─ streaming_catalog.titles           (shared catalog + autoEmbed index, Part 2)
+        ├─ streaming_catalog.titles_sandbox_*  (your personal collection + index, Part 1)
+        └─ workshop_admin.settings            (admin-only control-plane doc)
 ```
 
 ## How workshop availability works
 
-The agent will only respond during the admin-scheduled workshop window. If
-you see a message saying the workshop isn't currently active, contact your
-workshop organizer — there's nothing to configure on your end.
-
-Vector search needs **no API key at all**: `plot_vector_index` is an Atlas
-**Automated Embedding** index (`autoEmbed` field type, `voyage-4` model) —
-Atlas generates and manages embeddings entirely server-side, for both the
-seed catalog and anything attendees insert live.
+Both the notebook (Part 1) and the agent (Part 2) only work during the
+admin-scheduled workshop window — they read the same admin-controlled
+`workshop_admin.settings` document (via a read-only credential) to fetch
+their respective API keys (Voyage AI, Grove AI Gateway) and check whether
+the workshop is currently enabled. If you see an "inactive" style error in
+either, contact your workshop organizer — there's nothing to configure on
+your end.
 
 ## Workshop guidance for attendees
 
-### 1. Setup (~2 minutes)
+### Setup (~2 minutes)
 
 ```bash
 git clone https://github.com/nikosheng/mongodb-agent-mcp-workshop.git
@@ -39,22 +43,44 @@ cp .env.example .env
 # edit .env: set WORKSHOP_USER_ID (your name/initials), and paste the two
 # shared connection strings your workshop admin gives you. No API keys needed.
 npm install
+```
+
+### Part 1: Build your own vector search (notebook)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r notebooks/requirements.txt
+jupyter lab notebooks/01_build_vector_search.ipynb
+```
+
+Work through [`notebooks/01_build_vector_search.ipynb`](./notebooks/01_build_vector_search.ipynb)
+cell by cell. You'll:
+
+1. Explore the schema of the shared `streaming_catalog.titles` collection
+2. Copy a small subset into your own sandbox collection
+3. Embed the `synopsis` field yourself with the **Voyage AI** embeddings API
+4. Create your own Atlas **Vector Search** index on those embeddings
+5. Run a `$vectorSearch` query against your own index
+6. Compare this to Atlas's **Automated Embedding** (what powers Part 2)
+7. Clean up your sandbox index/collection
+
+**Prerequisite:** Python 3.10+ and pip.
+
+### Part 2: End-to-end agent demo (Mastra Studio)
+
+```bash
 npm run dev
 ```
 
 `npm run dev` opens **Mastra Studio** in your browser — a chat UI with live
-tool-call tracing. That chat window is the whole demo surface; there's no
-separate app to run.
-
-### 2. Try it out
-
-See [`demo/workshop_script.md`](./demo/workshop_script.md) for the full live
-demo flow and example prompts. In short, you can:
+tool-call tracing. See [`demo/workshop_script.md`](./demo/workshop_script.md)
+for the full live demo flow and example prompts. In short, you can:
 
 - **Ask for a recommendation** — e.g. "Recommend something like Stranger
   Things but funnier." Watch the tool-call trace: the agent runs a
   `$vectorSearch` aggregation against `plot_vector_index`, and Atlas embeds
-  your request automatically (no vectors computed in this app).
+  your request automatically — no embedding code anywhere in this app,
+  unlike the manual version you just built in Part 1.
 - **Contribute your own title** — e.g. "Add a movie idea: ..." The agent
   inserts it into the shared catalog tagged with your `WORKSHOP_USER_ID`;
   Atlas embeds it within a few seconds, live.
@@ -66,24 +92,28 @@ Don't ask the agent to drop the index/collection or connect to any other
 database — destructive tools are disabled server-side and your credentials
 only grant access to `streaming_catalog`, so neither would work anyway.
 
-### 3. Troubleshooting
+### Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| Agent refuses every message with a "workshop not active" style error | The admin hasn't started the window yet, it expired, or it was disabled — contact your organizer, nothing to fix on your end |
-| "MONGODB_ADMIN_READONLY_CONNECTION_STRING is missing" | You haven't filled in `.env` yet, or forgot to restart `npm run dev` after editing it |
-| MCP tool calls fail with an auth/permission error | Double-check you pasted the exact connection strings from your admin's handout (not your own Atlas credentials) |
+| Notebook or agent refuses with a "workshop not active" style error | The admin hasn't started the window yet, it expired, or it was disabled — contact your organizer, nothing to fix on your end |
+| "MONGODB_ADMIN_READONLY_CONNECTION_STRING is missing" (agent) / `KeyError` on the same var (notebook) | You haven't filled in `.env` yet, or forgot to restart `npm run dev` / restart the notebook kernel after editing it |
+| MCP tool calls or pymongo calls fail with an auth/permission error | Double-check you pasted the exact connection strings from your admin's handout (not your own Atlas credentials) |
+| Notebook's vector index never becomes "queryable" | Give it a minute — index builds take a little time; if it's stuck longer, re-run the polling cell or ask your admin to check cluster index limits |
 
 ## Project layout
 
 ```
+notebooks/
+  01_build_vector_search.ipynb Part 1: manual schema/embed/index/search walkthrough
+  requirements.txt             pymongo, voyageai, python-dotenv, jupyterlab
 src/mastra/
   index.ts                     Mastra instance registration
   agents/streaming-catalog-agent.ts   The agent: dynamic model + MCP tools
   processors/demo-gate.ts      Blocks every LLM call outside the active window
   mcp/mongodb-client.ts        Spawns the local MongoDB MCP Server (stdio)
   shared/demo-status.ts        Reads workshop_admin.settings (read-only)
-demo/workshop_script.md        Attendee live demo script
+demo/workshop_script.md        Part 1 + Part 2 attendee/presenter live demo script
 ```
 
 ## Security model
@@ -106,3 +136,10 @@ on an LLM behaving itself.
   `streaming_catalog.titles` collection, tagged by `ownerId`. This is
   intentional — everyone can see everyone's contributions, which is a feature
   for a workshop, not a bug.
+- **Notebook sandboxes are isolated, but please clean up**: `workshop_demo_user`
+  (readWrite on `streaming_catalog`) is enough to create/drop your own Atlas
+  Search indexes directly — no extra admin privileges needed. Your sandbox
+  collection/index in Part 1 is named after your `WORKSHOP_USER_ID`, so it
+  never collides with anyone else's or with the shared production index. Run
+  the notebook's cleanup cell when you're done — Atlas Search index counts
+  are limited per cluster, especially on shared/Flex tiers.

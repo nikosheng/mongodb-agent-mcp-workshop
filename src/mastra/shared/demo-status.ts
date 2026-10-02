@@ -7,6 +7,13 @@ export const ADMIN_SETTINGS_ID = 'workshop'
 export type WorkshopSettings = {
   _id: string
   aiGatewayApiKey: string
+  /**
+   * Shared Voyage AI API key used by the attendee-facing Jupyter notebook
+   * (notebooks/01_build_vector_search.ipynb) to call the embeddings API
+   * directly. Fetched read-only, same as aiGatewayApiKey — never written by
+   * attendees, only by scripts/admin via the admin connection string.
+   */
+  voyageApiKey: string
   startsAt: Date
   expiresAt: Date
   enabled: boolean
