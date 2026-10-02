@@ -1,9 +1,15 @@
 # Workshop Script: MongoDB MCP Server + Atlas Vector Search
 
-This is the live, presenter/attendee-facing script. Everything here happens
-by typing natural-language prompts into the chat window (Mastra Studio, opened
-via `npm run dev`) — there is no custom UI code to demo, the conversation
-*is* the demo.
+This workshop has two parts:
+
+- **Part 1 (hands-on, notebook)**: attendees build a vector search pipeline
+  manually — explore the schema, embed with Voyage AI, create a vector index,
+  query it — in [`notebooks/01_build_vector_search.ipynb`](../notebooks/01_build_vector_search.ipynb).
+- **Part 2 (live demo, this script)**: everything here happens by typing
+  natural-language prompts into the chat window (Mastra Studio, opened via
+  `npm run dev`) — there is no custom UI code to demo, the conversation *is*
+  the demo. This is the fully-automated version of what attendees just
+  built by hand in Part 1.
 
 ## Before you start (presenter, once)
 
@@ -28,21 +34,34 @@ cp .env.example .env
 # edit .env: set WORKSHOP_USER_ID to your name/initials, paste the two shared
 # connection strings the presenter gave you
 npm install
+```
+
+Do Part 1 first (see `notebooks/01_build_vector_search.ipynb` and the
+"Workshop guidance for attendees" section of the main `README.md`), then
+come back here for Part 2:
+
+```bash
 npm run dev
 ```
 
 `npm run dev` opens Mastra Studio in your browser with a chat window connected
-to the `streamingCatalogAgent`. That's the whole demo surface.
+to the `streamingCatalogAgent`. That's the whole demo surface for Part 2.
 
-## Live flow
+## Live flow (Part 2)
 
 ### 1. Semantic search (safe for everyone to try at once)
 
 Try prompts like:
 
-> "Recommend something like Stranger Things but funnier."
-
 > "I want a feel-good documentary about food."
+
+This is the exact same query you ran manually against your own sandbox
+index at the end of the notebook (Part 1) — compare the results and notice
+there's no `vo.embed(...)` call anywhere in this app's code this time.
+
+Also try:
+
+> "Recommend something like Stranger Things but funnier."
 
 > "Find a slow-burn romance movie, nothing too long."
 

@@ -5,3 +5,6 @@ dist/
 .mastra/
 *.log
 .DS_Store
+.ipynb_checkpoints/
+.venv/
+__pycache__/
