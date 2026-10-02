@@ -13,6 +13,7 @@
     "admin:disable": "tsx admin/update-settings.ts --action disable",
     "admin:enable": "tsx admin/update-settings.ts --action enable",
     "admin:rotate-key": "tsx admin/update-settings.ts --action rotate-key",
+    "admin:rotate-voyage-key": "tsx admin/update-settings.ts --action rotate-voyage-key",
     "admin:status": "tsx admin/update-settings.ts --action status"
   },
   "dependencies": {

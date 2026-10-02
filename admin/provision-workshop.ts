@@ -9,13 +9,18 @@
  *      - workshop_readonly_user  read       on workshop_admin     (shared, attendees)
  *      - workshop_demo_user      readWrite on streaming_catalog  (shared, attendees)
  *   2. Opens the IP access list to 0.0.0.0/0 for the workshop duration.
- *   3. Seeds workshop_admin.settings with the AI Gateway API key and an
- *      initial start/expiry window.
+ *   3. Seeds workshop_admin.settings with the AI Gateway API key, the shared
+ *      Voyage AI API key (used by attendees' Part 1 notebook to call the
+ *      embeddings API directly), and an initial start/expiry window.
  *   4. Seeds streaming_catalog.titles with the sample catalog and creates a
  *      MongoDB Atlas Automated Embedding ("autoEmbed") vector search index
- *      using the voyage-4 model. Automated Embedding is fully Atlas-hosted —
- *      no Voyage API key is needed anywhere in this project; Atlas generates
- *      and manages all embeddings server-side (index-time and query-time).
+ *      using the voyage-4 model — this is the index that powers Part 2 (the
+ *      Mastra Studio agent demo). Automated Embedding is fully Atlas-hosted;
+ *      this app's own code never calls the Voyage API for this index.
+ *      Attendees separately call the Voyage API themselves, by hand, against
+ *      their own personal sandbox collection in Part 1 of the workshop (see
+ *      notebooks/01_build_vector_search.ipynb) — that's what
+ *      ADMIN_VOYAGE_API_KEY below is seeded for.
  *
  * Idempotent: safe to re-run. Existing users/documents/indexes are left
  * alone rather than duplicated.
@@ -24,6 +29,7 @@
  * following environment variables set (see .env.example):
  *   ATLAS_PROJECT_ID, ATLAS_CLUSTER_HOST
  *   ADMIN_AI_GATEWAY_API_KEY
+ *   ADMIN_VOYAGE_API_KEY
  *
  * Usage:
  *   npm run admin:provision -- \
@@ -145,6 +151,7 @@ function ensureOpenAccessList(projectId: string) {
 
 async function seedAdminSettings(adminConnectionString: string, hours: number) {
   const aiGatewayApiKey = requireEnv('ADMIN_AI_GATEWAY_API_KEY')
+  const voyageApiKey = requireEnv('ADMIN_VOYAGE_API_KEY')
 
   const client = new MongoClient(adminConnectionString)
   await client.connect()
@@ -160,6 +167,7 @@ async function seedAdminSettings(adminConnectionString: string, hours: number) {
         {
           $set: {
             aiGatewayApiKey,
+            voyageApiKey,
             startsAt: now,
             expiresAt,
             enabled: true,

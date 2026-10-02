@@ -14,11 +14,14 @@
  *   npm run admin:disable                    # instant kill-switch
  *   npm run admin:enable                     # re-enable (does not change the time window)
  *   npm run admin:rotate-key -- --key sk-...  # rotate the Grove AI Gateway key
+ *   npm run admin:rotate-voyage-key -- --key pa-...  # rotate the Voyage AI key
  */
 import { MongoClient } from 'mongodb'
 import type { WorkshopSettings } from '../src/mastra/shared/demo-status.ts'
 
-type Action = 'status' | 'extend' | 'disable' | 'enable' | 'rotate-key'
+type Action = 'status' | 'extend' | 'disable' | 'enable' | 'rotate-key' | 'rotate-voyage-key'
+
+const VALID_ACTIONS: Action[] = ['status', 'extend', 'disable', 'enable', 'rotate-key', 'rotate-voyage-key']
 
 function parseArgs(): { action: Action; hours?: number; key?: string } {
   const argv = process.argv.slice(2)
@@ -29,8 +32,8 @@ function parseArgs(): { action: Action; hours?: number; key?: string } {
   const actionIdx = argv.indexOf('--action')
   const action = (actionIdx !== -1 ? argv[actionIdx + 1] : argv[0]) as Action | undefined
 
-  if (!action || !['status', 'extend', 'disable', 'enable', 'rotate-key'].includes(action)) {
-    console.error('Usage: tsx admin/update-settings.ts --action <status|extend|disable|enable|rotate-key>')
+  if (!action || !VALID_ACTIONS.includes(action)) {
+    console.error(`Usage: tsx admin/update-settings.ts --action <${VALID_ACTIONS.join('|')}>`)
     process.exit(1)
   }
 
@@ -68,8 +71,23 @@ async function main() {
         const now = new Date()
         const active =
           doc.enabled && now >= new Date(doc.startsAt) && now <= new Date(doc.expiresAt) && !!doc.aiGatewayApiKey
-        console.log(JSON.stringify({ ...doc, aiGatewayApiKey: doc.aiGatewayApiKey ? '(set)' : '(missing)' }, null, 2))
+        console.log(
+          JSON.stringify(
+            {
+              ...doc,
+              aiGatewayApiKey: doc.aiGatewayApiKey ? '(set)' : '(missing)',
+              voyageApiKey: doc.voyageApiKey ? '(set)' : '(missing)',
+            },
+            null,
+            2,
+          ),
+        )
         console.log(`\nCurrently ${active ? 'ACTIVE' : 'INACTIVE'} (server time: ${now.toISOString()})`)
+        if (!doc.voyageApiKey) {
+          console.log(
+            'Note: voyageApiKey is missing — the Part 1 notebook will fail even though the agent (Part 2) may still work.',
+          )
+        }
         break
       }
 
@@ -103,6 +121,18 @@ async function main() {
         }
         await settings.updateOne({ _id: 'workshop' }, { $set: { aiGatewayApiKey: key, updatedAt: new Date() } })
         console.log('Grove AI Gateway API key rotated. Takes effect on each attendee agent\'s next request.')
+        break
+      }
+
+      case 'rotate-voyage-key': {
+        if (!key) {
+          console.error('Usage: npm run admin:rotate-voyage-key -- --key <new-voyage-api-key>')
+          process.exit(1)
+        }
+        await settings.updateOne({ _id: 'workshop' }, { $set: { voyageApiKey: key, updatedAt: new Date() } })
+        console.log(
+          'Voyage AI API key rotated. Takes effect the next time an attendee re-runs the settings-fetch cell in the Part 1 notebook.',
+        )
         break
       }
     }

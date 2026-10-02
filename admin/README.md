@@ -9,20 +9,25 @@ the `main` branch URL (or the two shared connection strings) with attendees.
 > in your own local `.env` (gitignored) and in the `workshop_admin.settings`
 > document in Atlas itself — never committed anywhere.
 
-## How the admin-controlled "one-day usage switch" works
+## Two-part workshop, two shared API keys
 
-Every attendee's agent reads a single MongoDB document —
-`workshop_admin.settings` — before every LLM call (via a read-only credential
-that cannot see anything else). That document holds the Grove AI Gateway API
-key, a start/expiry time window, and an `enabled` flag. You edit that one
-document (via `npm run admin:extend|disable|enable|rotate-key`) to control
-the entire workshop's lifecycle — no redeploy, no per-attendee action, no
-attendee ever sees or configures an API key.
+This workshop has two parts, each with its own admin-controlled, shared API
+key — both live in the same `workshop_admin.settings` document, fetched
+read-only by attendees, never configured by them:
 
-Vector search needs **no API key at all**: `plot_vector_index` is an Atlas
-**Automated Embedding** index (`autoEmbed` field type, `voyage-4` model) —
-Atlas generates and manages embeddings entirely server-side, for both the
-seed catalog and anything attendees insert live.
+- **Part 1 (notebook, `notebooks/01_build_vector_search.ipynb`)**: attendees
+  call the **Voyage AI** embeddings API directly, by hand, against their own
+  personal sandbox collection — this is what `voyageApiKey` is for.
+- **Part 2 (Mastra Studio agent)**: the agent calls an LLM via the **Grove AI
+  Gateway** — this is what `aiGatewayApiKey` is for. Vector search itself
+  still needs **no API key in this app's code** for Part 2: `plot_vector_index`
+  is an Atlas **Automated Embedding** index (`autoEmbed` field type,
+  `voyage-4` model) — Atlas generates and manages embeddings entirely
+  server-side, for both the seed catalog and anything attendees insert live.
+
+Both parts read the same `enabled`/`startsAt`/`expiresAt` window, so the
+lifecycle commands below (`extend`/`disable`/`enable`) control Part 1 and
+Part 2 simultaneously — there's a single kill-switch for the whole workshop.
 
 ## Prerequisites
 
@@ -32,6 +37,8 @@ seed catalog and anything attendees insert live.
   authenticated: `atlas auth login`.
 - Node.js ≥ 22.13, npm.
 - A Grove AI Gateway API key.
+- A Voyage AI API key (for attendees' Part 1 notebook — get one at
+  [voyageai.com](https://www.voyageai.com/)).
 - Your Atlas project ID and cluster hostname (e.g. `your-cluster.abcd1.mongodb.net`,
   the part of your connection string after `@`).
 
@@ -41,7 +48,7 @@ seed catalog and anything attendees insert live.
 # on the admin branch
 cp .env.example .env
 # Fill in the admin-only section of .env (or export directly):
-#   ATLAS_PROJECT_ID, ATLAS_CLUSTER_HOST, ADMIN_AI_GATEWAY_API_KEY
+#   ATLAS_PROJECT_ID, ATLAS_CLUSTER_HOST, ADMIN_AI_GATEWAY_API_KEY, ADMIN_VOYAGE_API_KEY
 npm install
 
 npm run admin:provision -- \
@@ -52,10 +59,11 @@ npm run admin:provision -- \
 ```
 
 This creates 3 scoped Atlas database users, opens the IP access list to
-`0.0.0.0/0` for the workshop duration, seeds `workshop_admin.settings`,
-inserts the sample catalog (`admin/data/sample_catalog.json`), and creates the
-`plot_vector_index` Automated Embedding index. It prints the two connection
-strings to share with attendees at the end — copy those into your handout.
+`0.0.0.0/0` for the workshop duration, seeds `workshop_admin.settings` with
+both the Grove AI Gateway key and the Voyage AI key, inserts the sample
+catalog (`admin/data/sample_catalog.json`), and creates the `plot_vector_index`
+Automated Embedding index (for Part 2). It prints the two connection strings
+to share with attendees at the end — copy those into your handout.
 
 Save `ADMIN_CONNECTION_STRING=mongodb+srv://workshop_admin_user:<admin-password>@<cluster-host>/...`
 into your own `.env` (not shared) — you'll need it for day-to-day lifecycle
@@ -68,21 +76,42 @@ With 28 seed documents this usually takes under a minute.
 
 Distribute `MONGODB_DEMO_CONNECTION_STRING` and
 `MONGODB_ADMIN_READONLY_CONNECTION_STRING` to attendees (handout, private
-chat — not git), along with the `main` branch clone URL.
+chat — not git), along with the `main` branch clone URL. That's all
+attendees need for both Part 1 and Part 2 — no Voyage or Grove key is ever
+handed out directly.
 
 ## Day-to-day lifecycle commands
 
 ```bash
-npm run admin:status                       # see current window + enabled state
-npm run admin:extend -- --hours 24         # push the expiry forward
-npm run admin:disable                      # instant kill-switch
-npm run admin:enable                       # re-enable (time window unchanged)
-npm run admin:rotate-key -- --key sk-...   # rotate the Grove AI Gateway key
+npm run admin:status                             # see current window + enabled state
+npm run admin:extend -- --hours 24               # push the expiry forward
+npm run admin:disable                            # instant kill-switch (Part 1 + Part 2)
+npm run admin:enable                              # re-enable (time window unchanged)
+npm run admin:rotate-key -- --key sk-...          # rotate the Grove AI Gateway key
+npm run admin:rotate-voyage-key -- --key pa-...   # rotate the Voyage AI key
 ```
 
 `npm run admin:disable` instantly stops every attendee's agent from calling
-the LLM, regardless of the configured time window. Or just let `expiresAt`
-pass naturally — same effect, no action needed.
+the LLM **and** the notebook's Voyage calls, regardless of the configured
+time window. Or just let `expiresAt` pass naturally — same effect, no action
+needed.
+
+### Monitoring attendee sandbox indexes (Part 1)
+
+Atlas Search index counts are limited per cluster (especially on Flex/shared
+tiers). Each attendee's notebook creates its own `plot_vector_index_<user_id>`
+index on its own `titles_sandbox_<user_id>` collection and is supposed to
+clean both up in the notebook's final cell — but if someone's kernel dies
+mid-exercise, you may need to clean up manually:
+
+```js
+// in mongosh, connected with ADMIN_CONNECTION_STRING or workshop_demo_user
+use streaming_catalog
+db.getCollectionNames().filter(name => name.startsWith("titles_sandbox_"))
+// for any stray ones:
+db["titles_sandbox_<user_id>"].dropSearchIndex("plot_vector_index_<user_id>")
+db["titles_sandbox_<user_id>"].drop()
+```
 
 ## Folder contents
 
@@ -106,8 +135,11 @@ Attendees' agents can never read or modify the admin settings document — that
 boundary is enforced by Atlas's role system, not just application logic.
 Destructive MongoDB tools (`drop-database`, `drop-collection`, `delete-many`,
 `update-many`, `rename-collection`, `drop-index`) are disabled outright on the
-MCP server for this workshop (see `../src/mastra/mcp/mongodb-client.ts`), so
-there's no reliance on an LLM behaving itself.
+MCP server for this workshop (see `../src/mastra/mcp/mongodb-client.ts`) —
+this only restricts the *agent's* tools in Part 2, not attendees' raw
+`pymongo` access in Part 1's notebook, which relies instead on each
+attendee's sandbox naming convention (own collection, own index) to stay
+isolated. No reliance on an LLM behaving itself in either part.
 
 ## Notes / things to verify at your workshop
 
@@ -118,6 +150,11 @@ there's no reliance on an LLM behaving itself.
   supports Atlas Search indexes. Confirm your Flex cluster supports this
   before the workshop; `provision-workshop.ts` will surface a clear error on
   `createSearchIndexes` if not.
+- **Atlas Search index limits**: with several attendees each building their
+  own Part 1 sandbox index, keep an eye on your cluster's total Atlas Search
+  index count, especially on Flex/shared tiers. The notebook's final cell
+  cleans up after each attendee — see "Monitoring attendee sandbox indexes"
+  above if you need to clean up manually.
 - **Keeping this branch in sync**: shared app code changes should be made on
   `main` first, then merged forward here (`git checkout admin && git merge
   main`) to pick up updates without losing the `admin/` folder or the
