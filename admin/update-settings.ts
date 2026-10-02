@@ -18,6 +18,7 @@
  */
 import { MongoClient } from 'mongodb'
 import type { WorkshopSettings } from '../src/mastra/shared/demo-status.ts'
+import { connectWithRetry } from './connect-with-retry.ts'
 
 type Action = 'status' | 'extend' | 'disable' | 'enable' | 'rotate-key' | 'rotate-voyage-key'
 
@@ -57,7 +58,7 @@ async function main() {
   const adminConnectionString = requireEnv('ADMIN_CONNECTION_STRING')
 
   const client = new MongoClient(adminConnectionString)
-  await client.connect()
+  await connectWithRetry(client, 'workshop_admin_user')
   const settings = client.db('workshop_admin').collection<WorkshopSettings>('settings')
 
   try {

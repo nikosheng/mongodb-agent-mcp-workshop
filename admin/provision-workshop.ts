@@ -25,6 +25,13 @@
  * Idempotent: safe to re-run. Existing users/documents/indexes are left
  * alone rather than duplicated.
  *
+ * Note: newly created Atlas database users can take anywhere from a few
+ * seconds up to roughly a minute to fully propagate to the cluster's auth
+ * layer after `atlas dbusers create` returns. The first connection attempt
+ * for each user automatically retries on auth errors for a short window
+ * (see ./connect-with-retry.ts) so this script succeeds reliably on a
+ * clean, first-ever run without requiring a manual re-run.
+ *
  * Requires: Atlas CLI (`atlas`) authenticated (`atlas auth login`), and the
  * following environment variables set (see .env.example):
  *   ATLAS_PROJECT_ID, ATLAS_CLUSTER_HOST
@@ -44,6 +51,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { MongoClient } from 'mongodb'
 import type { WorkshopSettings } from '../src/mastra/shared/demo-status.ts'
+import { connectWithRetry } from './connect-with-retry.ts'
 
 type Args = {
   demoPassword: string
@@ -163,7 +171,7 @@ async function seedAdminSettings(adminConnectionString: string, hours: number) {
   const voyageApiKey = requireEnv('ADMIN_VOYAGE_API_KEY')
 
   const client = new MongoClient(adminConnectionString)
-  await client.connect()
+  await connectWithRetry(client, 'workshop_admin_user')
   try {
     const now = new Date()
     const expiresAt = new Date(now.getTime() + hours * 60 * 60 * 1000)
@@ -196,7 +204,7 @@ async function seedAdminSettings(adminConnectionString: string, hours: number) {
 
 async function seedCatalogAndIndex(demoConnectionString: string) {
   const client = new MongoClient(demoConnectionString)
-  await client.connect()
+  await connectWithRetry(client, 'workshop_demo_user')
   try {
     const db = client.db('streaming_catalog')
     const collection = db.collection('titles')

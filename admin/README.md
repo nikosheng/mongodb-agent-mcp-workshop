@@ -65,6 +65,16 @@ catalog (`admin/data/sample_catalog.json`), and creates the `plot_vector_index`
 Automated Embedding index (for Part 2). It prints the two connection strings
 to share with attendees at the end — copy those into your handout.
 
+> **Note on first-run auth errors:** newly created Atlas database users can
+> take anywhere from a few seconds up to roughly a minute to fully propagate
+> to the cluster's auth layer. The script automatically retries each
+> connection on `bad auth`/`AtlasError` failures for up to ~40 seconds before
+> giving up (see `admin/connect-with-retry.ts`), so a clean first run should
+> now succeed without you needing to manually re-run it. If it still fails
+> after retrying, that points to a different cause (wrong password reused
+> from a prior run with a different password, wrong `ATLAS_CLUSTER_HOST`,
+> etc.) — check the error message for the specific username it failed on.
+
 Save `ADMIN_CONNECTION_STRING=mongodb+srv://workshop_admin_user:<admin-password>@<cluster-host>/...`
 into your own `.env` (not shared) — you'll need it for day-to-day lifecycle
 commands below.
