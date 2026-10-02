@@ -91,6 +91,21 @@ function requireEnv(name: string): string {
   return value
 }
 
+/** Redacts the password out of a mongodb(+srv) connection string for safe logging. */
+function redactConnectionString(connectionString: string): string {
+  try {
+    const url = new URL(connectionString)
+    if (url.password) {
+      url.password = 'REDACTED'
+    }
+    return url.toString()
+  } catch {
+    // Fall back to a regex if the string isn't a valid URL for some reason —
+    // still better than logging the raw password.
+    return connectionString.replace(/:\/\/[^:]+:[^@]+@/, '://[REDACTED]@')
+  }
+}
+
 function atlas(args: string[]): string {
   const displayArgs = args.map((value, index) => args[index - 1] === '--password' ? '[REDACTED]' : value)
   console.log(`$ atlas ${displayArgs.join(' ')}`)
@@ -170,6 +185,11 @@ async function seedAdminSettings(adminConnectionString: string, hours: number) {
   const aiGatewayApiKey = requireEnv('ADMIN_AI_GATEWAY_API_KEY')
   const voyageApiKey = requireEnv('ADMIN_VOYAGE_API_KEY')
 
+  console.log(
+    `Connecting as workshop_admin_user via ${redactConnectionString(adminConnectionString)}\n` +
+      `Target namespace: workshop_admin.settings`,
+  )
+
   const client = new MongoClient(adminConnectionString)
   await connectWithRetry(client, 'workshop_admin_user')
   try {
@@ -203,6 +223,11 @@ async function seedAdminSettings(adminConnectionString: string, hours: number) {
 }
 
 async function seedCatalogAndIndex(demoConnectionString: string) {
+  console.log(
+    `Connecting as workshop_demo_user via ${redactConnectionString(demoConnectionString)}\n` +
+      `Target namespace: streaming_catalog.titles`,
+  )
+
   const client = new MongoClient(demoConnectionString)
   await connectWithRetry(client, 'workshop_demo_user')
   try {
