@@ -65,10 +65,15 @@ cell by cell. You'll:
 1. Explore the schema of the shared `streaming_catalog.titles` collection
 2. Copy a small subset into your own sandbox collection
 3. Embed the `synopsis` field yourself with the **Voyage AI** embeddings API
-4. Create your own Atlas **Vector Search** index on those embeddings
-5. Run a `$vectorSearch` query against your own index
-6. Compare this to Atlas's **Automated Embedding** (what powers Part 2)
-7. Clean up your sandbox index/collection
+4. Create your own self-managed Atlas **Vector Search** index on those embeddings
+5. Run a `$vectorSearch` query against your own self-managed index
+6. Drop that index, then build a second index on the same documents using
+   Atlas's **Automated Embedding** (`autoEmbed`) — no embedding code this time
+7. Query the `autoEmbed` index with plain text instead of a pre-computed vector
+8. Insert a brand-new title with zero embedding code and watch it show up in
+   semantic search live — the moment that really sells `autoEmbed`
+9. Compare both approaches side by side
+10. Clean up your sandbox index/collection
 
 **Prerequisite:** Python 3.10+ and pip.
 
