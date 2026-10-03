@@ -64,10 +64,11 @@ cell by cell. You'll:
 6. Drop that index, then build a second index on the same documents using
    Atlas's **Automated Embedding** (`autoEmbed`) — no embedding code this time
 7. Query the `autoEmbed` index with plain text instead of a pre-computed vector
-8. Insert a brand-new title with zero embedding code and watch it show up in
+8. Combine semantic search with a `release_year` metadata filter
+9. Insert a brand-new title with zero embedding code and watch it show up in
    semantic search live — the moment that really sells `autoEmbed`
-9. Compare both approaches side by side
-10. Clean up your sandbox index/collection
+10. Compare both approaches side by side
+11. Clean up your sandbox index/collection
 
 **Prerequisite:** Python 3.10+ and pip.
 
