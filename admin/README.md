@@ -160,11 +160,14 @@ isolated. No reliance on an LLM behaving itself in either part.
   supports Atlas Search indexes. Confirm your Flex cluster supports this
   before the workshop; `provision-workshop.ts` will surface a clear error on
   `createSearchIndexes` if not.
-- **Atlas Search index limits**: with several attendees each building their
-  own Part 1 sandbox index, keep an eye on your cluster's total Atlas Search
-  index count, especially on Flex/shared tiers. The notebook's final cell
-  cleans up after each attendee — see "Monitoring attendee sandbox indexes"
-  above if you need to clean up manually.
+- **Atlas Search index limits**: each attendee now builds two sandbox indexes
+  in sequence (a self-managed one, then an `autoEmbed` one) — but the
+  notebook explicitly drops the first before creating the second, so peak
+  concurrent footprint per attendee stays at 1 index, same as before. Keep an
+  eye on your cluster's total Atlas Search index count regardless, especially
+  on Flex/shared tiers. The notebook's final cell cleans up the last
+  remaining index/collection after each attendee — see "Monitoring attendee
+  sandbox indexes" above if you need to clean up manually.
 - **Keeping this branch in sync**: shared app code changes should be made on
   `main` first, then merged forward here (`git checkout admin && git merge
   main`) to pick up updates without losing the `admin/` folder or the
