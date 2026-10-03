@@ -98,6 +98,7 @@ only grant access to `streaming_catalog`, so neither would work anyway.
 |---|---|
 | Notebook or agent refuses with a "workshop not active" style error | The admin hasn't started the window yet, it expired, or it was disabled — contact your organizer, nothing to fix on your end |
 | "MONGODB_ADMIN_READONLY_CONNECTION_STRING is missing" (agent) / `KeyError` on the same var (notebook) | You haven't filled in `.env` yet, or forgot to restart `npm run dev` / restart the notebook kernel after editing it |
+| `ModuleNotFoundError: No module named 'pymongo'` (or `voyageai`, `dotenv`) in the notebook | You haven't created/activated your `.venv` and run `pip install -r notebooks/requirements.txt` yet (see Part 1 setup above), or launched `jupyter lab` from a different environment than the one you installed into |
 | MCP tool calls or pymongo calls fail with an auth/permission error | Double-check you pasted the exact connection strings from your admin's handout (not your own Atlas credentials) |
 | Notebook's vector index never becomes "queryable" | Give it a minute — index builds take a little time; if it's stuck longer, re-run the polling cell or ask your admin to check cluster index limits |
 
