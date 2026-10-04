@@ -67,8 +67,10 @@ cell by cell. You'll:
 8. Combine semantic search with a `release_year` metadata filter
 9. Insert a brand-new title with zero embedding code and watch it show up in
    semantic search live — the moment that really sells `autoEmbed`
-10. Compare both approaches side by side
-11. Clean up your sandbox index/collection
+10. Combine `synopsis`, `genres`, and `cast` into one embedding using a
+    MongoDB View, and watch it stay fresh as each field changes independently
+11. Compare both approaches side by side
+12. Clean up your sandbox index/collection
 
 **Prerequisite:** Python 3.10+ and pip.
 
